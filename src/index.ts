@@ -3,6 +3,7 @@
 import "dotenv/config";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { createClientFromEnv } from "./imap/index.js";
+import { startHttpServer } from "./http.js";
 import { createServer } from "./server.js";
 
 // Keep the process alive on unexpected errors — log to stderr so the
@@ -38,15 +39,25 @@ async function main() {
   // Create IMAP client from environment variables
   const imapClient = createClientFromEnv();
 
-  // Create the MCP server with all tools registered
-  const server = createServer(imapClient);
+  // stdio stays the default so a local MCP client keeps working unchanged;
+  // http serves the same tools to a client on the network.
+  const wantsHttp = (process.env.MCP_TRANSPORT ?? "stdio").toLowerCase() === "http";
+  let stopHttp: (() => Promise<void>) | undefined;
 
-  // Connect via stdio transport
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  if (wantsHttp) {
+    const handle = await startHttpServer(imapClient, {
+      port: Number(process.env.MCP_HTTP_PORT ?? 3000),
+      host: process.env.MCP_HTTP_HOST,
+    });
+    stopHttp = handle.close;
+  } else {
+    const server = createServer(imapClient);
+    await server.connect(new StdioServerTransport());
+  }
 
   // Graceful shutdown
   const shutdown = async () => {
+    await stopHttp?.();
     await imapClient.disconnect();
     process.exit(0);
   };

@@ -12,6 +12,37 @@ See [CHANGELOG.md](CHANGELOG.md) for recently added features.
 
 I highly recommend using a speech-to-text tool (e.g. [SuperWhisper](https://superwhisper.com) on Mac or [Whisperflow](https://whisperflow.com) on Windows) and connecting your AI desktop application (Claude, Codex, etc.) to this MCP server. That way you can converse with your email inbox using speech, which will dramatically speed up your workflow.
 
+## HTTP transport
+
+The server speaks stdio by default, which is what a local MCP client expects.
+Set `MCP_TRANSPORT=http` to serve the same tools over the network instead:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MCP_TRANSPORT` | `stdio` | `http` switches the transport |
+| `MCP_HTTP_PORT` | `3000` | port to listen on |
+| `MCP_HTTP_HOST` | `0.0.0.0` | address to bind |
+
+Requests go to `POST /mcp` and are **stateless**: every request gets its own
+server and transport, so there is no session to resume and `GET`/`DELETE`
+answer `405`. `GET /healthz` is there for a container probe.
+
+The server carries no authentication of its own. Put it somewhere only its
+client can reach — a network policy, a private network, or a proxy that
+authenticates for it.
+
+## Container
+
+```bash
+docker run -d -p 3000:3000 \
+  -e IMAP_HOST=posteo.de -e IMAP_PORT=993 -e IMAP_SECURE=true \
+  -e IMAP_USER=you@example.com -e IMAP_PASS=app-password \
+  ghcr.io/p3l1/imap-mini-mcp:latest
+```
+
+The image defaults to the HTTP transport and runs as a non-root user. It is
+built for `linux/arm64` and `linux/amd64`.
+
 ## How to Use
 
 ### Agent configuration
