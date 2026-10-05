@@ -11,6 +11,7 @@ import { createServer } from "./server.js";
 export interface HttpOptions {
   port?: number;
   host?: string;
+  label?: string;
 }
 
 export interface HttpHandle {
@@ -56,11 +57,12 @@ function send(res: ServerResponse, status: number, body: string): void {
  */
 async function handleMcp(
   imapClient: ImapClient,
+  label: string | undefined,
   req: IncomingMessage,
   res: ServerResponse
 ): Promise<void> {
   const body = await readBody(req);
-  const server = createServer(imapClient);
+  const server = createServer(imapClient, { label });
   const transport = new StreamableHTTPServerTransport({
     enableJsonResponse: true,
   });
@@ -103,7 +105,7 @@ export function startHttpServer(
       return;
     }
 
-    handleMcp(imapClient, req, res).catch((error: unknown) => {
+    handleMcp(imapClient, options.label, req, res).catch((error: unknown) => {
       const message = error instanceof Error ? error.message : String(error);
       process.stderr.write(`[imap-mini-mcp] http: ${message}\n`);
       if (!res.headersSent) {

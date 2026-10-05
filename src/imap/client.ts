@@ -1,4 +1,5 @@
 import { ImapFlow } from "imapflow";
+import { resolveSecret } from "./secrets.js";
 import type { ImapConfig } from "./types.js";
 
 /**
@@ -206,11 +207,11 @@ export function createClientFromEnv(): ImapClient {
   const tlsRejectUnauthorized =
     process.env.IMAP_TLS_REJECT_UNAUTHORIZED !== "false";
   const user = process.env.IMAP_USER;
-  const pass = process.env.IMAP_PASS;
 
   if (!host) throw new Error("IMAP_HOST environment variable is required");
   if (!user) throw new Error("IMAP_USER environment variable is required");
-  if (!pass) throw new Error("IMAP_PASS environment variable is required");
+
+  const pass = resolveSecret(process.env, "IMAP_PASS");
 
   return new ImapClient({
     host,

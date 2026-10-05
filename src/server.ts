@@ -9,16 +9,29 @@ import { tools, handleToolCall } from "./tools/index.js";
 /**
  * Create and configure the MCP server.
  */
-export function createServer(imapClient: ImapClient): Server {
+export interface ServerOptions {
+  /** Names the mailbox this server serves, for clients that reach several. */
+  label?: string;
+}
+
+export function createServer(
+  imapClient: ImapClient,
+  options: ServerOptions = {}
+): Server {
+  const label = options.label?.trim();
+
   const server = new Server(
     {
-      name: "imap-mini-mcp",
+      name: label ? `imap-mini-mcp (${label})` : "imap-mini-mcp",
       version: "0.1.0",
     },
     {
       capabilities: {
         tools: {},
       },
+      instructions: label
+        ? `Every tool here acts on the mailbox labelled "${label}" and on no other.`
+        : "Every tool here acts on a single mailbox.",
     }
   );
 
