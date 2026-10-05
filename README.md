@@ -31,12 +31,33 @@ The server carries no authentication of its own. Put it somewhere only its
 client can reach — a network policy, a private network, or a proxy that
 authenticates for it.
 
+## Secrets from a file
+
+`IMAP_PASS_FILE` names a file to read the password from, and takes precedence
+over `IMAP_PASS`. A trailing newline is stripped, an empty file is refused, and
+an unreadable one is an error rather than a silent fall back to the variable.
+
+Prefer it wherever the platform can mount a secret: a file is not exposed by
+`/proc/<pid>/environ`, a crash dump, or an environment a child process inherits.
+
+## Several mailboxes
+
+One process serves one mailbox. For several, run one instance per account —
+each with only its own credential, which keeps a compromised instance confined
+to a single mailbox.
+
+`IMAP_LABEL` names the mailbox an instance serves. The label travels in the
+server name and in the instructions a client receives on `initialize`, so a
+client that reached several of them can tell which is which.
+
 ## Container
 
 ```bash
 docker run -d -p 3000:3000 \
   -e IMAP_HOST=posteo.de -e IMAP_PORT=993 -e IMAP_SECURE=true \
-  -e IMAP_USER=you@example.com -e IMAP_PASS=app-password \
+  -e IMAP_USER=you@example.com -e IMAP_LABEL=Private \
+  -e IMAP_PASS_FILE=/run/secrets/imap-pass \
+  -v /path/to/app-password:/run/secrets/imap-pass:ro \
   ghcr.io/p3l1/imap-mini-mcp:latest
 ```
 
@@ -73,11 +94,15 @@ The `args` path must point to the built `dist/index.js`. Add any optional variab
 |---|---|---|---|
 | `IMAP_HOST` | yes | — | IMAP server hostname (e.g. `imap.gmail.com`) |
 | `IMAP_USER` | yes | — | Email address or username |
-| `IMAP_PASS` | yes | — | Password or app-specific password |
+| `IMAP_PASS` | yes* | — | Password or app-specific password |
+| `IMAP_PASS_FILE` | yes* | — | File to read the password from; wins over `IMAP_PASS` |
+| `IMAP_LABEL` | no | — | Names the mailbox this instance serves |
 | `IMAP_PORT` | no | `993` | IMAP server port |
 | `IMAP_SECURE` | no | `true` | Use TLS for the connection |
 | `IMAP_STARTTLS` | no | `true` | Upgrade to TLS via STARTTLS (when `IMAP_SECURE=false`) |
 | `IMAP_TLS_REJECT_UNAUTHORIZED` | no | `true` | Reject self-signed TLS certificates |
+
+\* One of `IMAP_PASS` or `IMAP_PASS_FILE` is required.
 
 For most providers (Gmail, Outlook, Fastmail), the defaults work — just set host, user, and password.
 

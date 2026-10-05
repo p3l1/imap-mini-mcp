@@ -41,6 +41,7 @@ async function main() {
 
   // stdio stays the default so a local MCP client keeps working unchanged;
   // http serves the same tools to a client on the network.
+  const label = process.env.IMAP_LABEL;
   const wantsHttp = (process.env.MCP_TRANSPORT ?? "stdio").toLowerCase() === "http";
   let stopHttp: (() => Promise<void>) | undefined;
 
@@ -48,10 +49,11 @@ async function main() {
     const handle = await startHttpServer(imapClient, {
       port: Number(process.env.MCP_HTTP_PORT ?? 3000),
       host: process.env.MCP_HTTP_HOST,
+      label,
     });
     stopHttp = handle.close;
   } else {
-    const server = createServer(imapClient);
+    const server = createServer(imapClient, { label });
     await server.connect(new StdioServerTransport());
   }
 

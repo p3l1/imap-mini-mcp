@@ -14,8 +14,8 @@ afterEach(async () => {
   stop = undefined;
 });
 
-async function listening() {
-  const handle = await startHttpServer(noopClient, { port: 0, host: "127.0.0.1" });
+async function listening(label?: string) {
+  const handle = await startHttpServer(noopClient, { port: 0, host: "127.0.0.1", label });
   stop = handle.close;
   const { port } = handle.server.address() as AddressInfo;
   return `http://127.0.0.1:${port}`;
@@ -71,6 +71,16 @@ describe("startHttpServer", () => {
     const res = await fetch(`${base}/healthz`);
 
     expect(res.status).toBe(200);
+  });
+
+  // With one server per mailbox the client needs to know which one it reached;
+  // initialize is where it finds out.
+  it("names the account label in the initialize response", async () => {
+    const base = await listening("Privat");
+
+    const res = await fetch(`${base}/mcp`, rpc(initialize));
+
+    expect(await res.text()).toContain("Privat");
   });
 
   it("answers 404 on an unknown path", async () => {

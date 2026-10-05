@@ -311,7 +311,7 @@ describe("createClientFromEnv", () => {
     process.env.IMAP_USER = "user";
 
     expect(() => createClientFromEnv()).toThrow(
-      "IMAP_PASS environment variable is required"
+      "IMAP_PASS or IMAP_PASS_FILE environment variable is required"
     );
   });
 
