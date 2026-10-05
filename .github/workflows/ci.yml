@@ -1,0 +1,78 @@
+name: ci
+
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  image:
+    needs: test
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Read the version from package.json
+        id: meta
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          # Der Docker-Exporter kann keine Manifestliste laden, darum baut ein
+          # Pull Request nur arm64 - dafuer laeuft der Smoke-Test vor dem Merge.
+          platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/arm64,linux/amd64' }}
+          push: ${{ github.event_name != 'pull_request' }}
+          load: ${{ github.event_name == 'pull_request' }}
+          provenance: false
+          tags: |
+            ghcr.io/p3l1/imap-mini-mcp:${{ steps.meta.outputs.version }}
+            ghcr.io/p3l1/imap-mini-mcp:sha-${{ steps.meta.outputs.sha }}
+            ghcr.io/p3l1/imap-mini-mcp:latest
+
+      - name: Smoke-test the image over HTTP
+        run: |
+          docker run -d --name mcp -p 3000:3000 \
+            -e IMAP_HOST=invalid.example -e IMAP_USER=x -e IMAP_PASS=x \
+            ghcr.io/p3l1/imap-mini-mcp:${{ steps.meta.outputs.version }}
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:3000/healthz && break
+            sleep 1
+          done
+          curl -fsS -X POST http://127.0.0.1:3000/mcp \
+            -H 'Content-Type: application/json' \
+            -H 'Accept: application/json, text/event-stream' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
+            | grep -q imap-mini-mcp
+          docker rm -f mcp
