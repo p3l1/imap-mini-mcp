@@ -5,6 +5,19 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This repository does not currently use release tags, so entries are grouped by date and major update scope.
 
+## [0.2.0](https://github.com/p3l1/imap-mini-mcp/compare/imap-mini-mcp-v0.1.0...imap-mini-mcp-v0.2.0) (2026-10-05)
+
+
+### Features
+
+* add find_emails tool to registry ([d7079ab](https://github.com/p3l1/imap-mini-mcp/commit/d7079ab22e2eaef61be61104779e9069c88d5672))
+* add findEmails unified search function ([b5d7f2b](https://github.com/p3l1/imap-mini-mcp/commit/b5d7f2b1981b2d6a77c58858efaac555be0c4253))
+* add hasAttachmentPart helper for bodyStructure inspection ([70d891e](https://github.com/p3l1/imap-mini-mcp/commit/70d891edc31d2680401a07e242d14f0c74e5e9ab))
+* add parseTimeParam helper for relative and ISO date parsing ([5c5f8ab](https://github.com/p3l1/imap-mini-mcp/commit/5c5f8ab91d3bc587694ac705e0301cdec66bc642))
+* read the password from a file and label the mailbox ([#3](https://github.com/p3l1/imap-mini-mcp/issues/3)) ([f2b2a47](https://github.com/p3l1/imap-mini-mcp/commit/f2b2a473a456485cfa90acc62849be2a6840e44b))
+* replace 12 list tools with unified find_emails ([2741077](https://github.com/p3l1/imap-mini-mcp/commit/2741077204d144aa9174d9cd163991a3c34fea9d))
+* serve the tools over stateless HTTP and ship an image ([#2](https://github.com/p3l1/imap-mini-mcp/issues/2)) ([be31b0f](https://github.com/p3l1/imap-mini-mcp/commit/be31b0f35608f658cbcc5e759739bbd852e512aa))
+
 ## 2026-02-23
 
 ### Changed
