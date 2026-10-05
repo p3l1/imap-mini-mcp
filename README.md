@@ -64,6 +64,23 @@ docker run -d -p 3000:3000 \
 The image defaults to the HTTP transport and runs as a non-root user. It is
 built for `linux/arm64` and `linux/amd64`.
 
+### Tags
+
+| Tag | Moves | Built by |
+|---|---|---|
+| `0.2.0` | never | a release |
+| `latest` | with each release | a release |
+| `sha-abc1234` | never | every push to `main` |
+| `main` | with each push | every push to `main` |
+
+Pin a deployment to `sha-…` or to a version. The weekly build refreshes `main`
+and its `sha-…`, so a released tag keeps the content it was published with —
+picking up a base image fix means cutting a release.
+
+Versions come from [release-please](https://github.com/googleapis/release-please):
+conventional commits on `main` keep a release pull request up to date, and
+merging it writes `CHANGELOG.md`, bumps `package.json`, tags, and publishes.
+
 ## How to Use
 
 ### Agent configuration

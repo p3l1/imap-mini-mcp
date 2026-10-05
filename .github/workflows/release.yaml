@@ -1,22 +1,39 @@
-name: ci
+name: release
 
 on:
-  schedule:
-    - cron: "41 4 * * 1"
   push:
-    branches: [main]
-  pull_request:
+    tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to release, e.g. v0.2.0 (release-please creates the tag; this only builds and publishes it)"
+        required: true
+        type: string
+
+env:
+  IMAGE: ghcr.io/p3l1/imap-mini-mcp
 
 permissions:
   contents: read
   packages: write
 
 jobs:
-  test:
+  release:
     runs-on: ubuntu-24.04-arm
     steps:
+      # github.ref_name is the pushed tag on a tag push, but the dispatching
+      # branch on workflow_dispatch, where only the input names the tag.
+      - name: Resolve the tag
+        id: resolve
+        run: |
+          tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
       - uses: actions/checkout@v5
+        with:
+          ref: ${{ steps.resolve.outputs.tag }}
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
@@ -24,16 +41,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm test
-
-  image:
-    needs: test
-    runs-on: ubuntu-24.04-arm
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Read the commit
-        id: meta
-        run: echo "sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
@@ -47,23 +54,18 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
-          # Der Docker-Exporter kann keine Manifestliste laden, darum baut ein
-          # Pull Request nur arm64 - dafuer laeuft der Smoke-Test vor dem Merge.
-          platforms: ${{ github.event_name == 'pull_request' && 'linux/arm64' || 'linux/arm64,linux/amd64' }}
-          push: ${{ github.event_name != 'pull_request' }}
-          load: ${{ github.event_name == 'pull_request' }}
+          platforms: linux/arm64,linux/amd64
+          push: true
           provenance: false
-          # Keine Versions-Tags hier: die vergibt release.yaml, und sie
-          # bleiben unveraenderlich. main und sha-… sind die beweglichen.
           tags: |
-            ghcr.io/p3l1/imap-mini-mcp:main
-            ghcr.io/p3l1/imap-mini-mcp:sha-${{ steps.meta.outputs.sha }}
+            ${{ env.IMAGE }}:${{ steps.resolve.outputs.version }}
+            ${{ env.IMAGE }}:latest
 
-      - name: Smoke-test the image over HTTP
+      - name: Smoke-test the published image
         run: |
           docker run -d --name mcp -p 3000:3000 \
             -e IMAP_HOST=invalid.example -e IMAP_USER=x -e IMAP_PASS=x \
-            ghcr.io/p3l1/imap-mini-mcp:sha-${{ steps.meta.outputs.sha }}
+            ${{ env.IMAGE }}:${{ steps.resolve.outputs.version }}
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:3000/healthz && break
             sleep 1
