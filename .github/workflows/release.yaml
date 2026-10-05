@@ -25,14 +25,17 @@ jobs:
       # branch on workflow_dispatch, where only the input names the tag.
       - name: Resolve the tag
         id: resolve
-        run: |
-          tag="${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+        run: echo "tag=${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
 
       - uses: actions/checkout@v5
         with:
           ref: ${{ steps.resolve.outputs.tag }}
+
+      # Aus package.json statt aus dem Tag-Namen: die Version steht dort
+      # unabhaengig davon, wie release-please den Tag schreibt.
+      - name: Read the version
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v6
         with:
@@ -58,14 +61,14 @@ jobs:
           push: true
           provenance: false
           tags: |
-            ${{ env.IMAGE }}:${{ steps.resolve.outputs.version }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
             ${{ env.IMAGE }}:latest
 
       - name: Smoke-test the published image
         run: |
           docker run -d --name mcp -p 3000:3000 \
             -e IMAP_HOST=invalid.example -e IMAP_USER=x -e IMAP_PASS=x \
-            ${{ env.IMAGE }}:${{ steps.resolve.outputs.version }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.version }}
           for i in $(seq 1 30); do
             curl -fsS http://127.0.0.1:3000/healthz && break
             sleep 1
