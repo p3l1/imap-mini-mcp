@@ -261,3 +261,11 @@ npm run lint         # type-check only
 ## License
 
 [MIT](https://opensource.org/license/mit)
+
+## Helm chart
+
+`charts/imap-mini-mcp` deploys the server, one release per mailbox. Each release
+is meant to publish it to `oci://ghcr.io/p3l1/charts/imap-mini-mcp` with the same
+version as the image, so a semver range such as `>=0.2.0` in Argo CD resolves to
+the newest release. The password is read from a Secret and mounted as a file;
+see `charts/imap-mini-mcp/values.yaml`.

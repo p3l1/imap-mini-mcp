@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "imap-mini-mcp.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: {{ include "imap-mini-mcp.name" . }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      name: http
