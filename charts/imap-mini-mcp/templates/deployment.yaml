@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "imap-mini-mcp.name" . }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ include "imap-mini-mcp.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "imap-mini-mcp.name" . }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        # Secret files belong to root with this group; mode 0440 makes them
+        # readable for the node user and nobody else.
+        fsGroup: 1000
+      {{- with .Values.image.pullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: imap-mcp
+          image: {{ include "imap-mini-mcp.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+              name: http
+          env:
+            - name: TZ
+              value: {{ .Values.timezone | quote }}
+            - name: IMAP_HOST
+              value: {{ required "imap.host" .Values.imap.host | quote }}
+            - name: IMAP_PORT
+              value: {{ .Values.imap.port | quote }}
+            - name: IMAP_SECURE
+              value: {{ .Values.imap.secure | quote }}
+            - name: IMAP_USER
+              value: {{ required "imap.user" .Values.imap.user | quote }}
+            {{- if .Values.imap.label }}
+            - name: IMAP_LABEL
+              value: {{ .Values.imap.label | quote }}
+            {{- end }}
+            # From a file, not the environment: the file shows up neither in
+            # /proc/<pid>/environ nor in a crash dump.
+            - name: IMAP_PASS_FILE
+              value: /run/secrets/imap/pass
+          volumeMounts:
+            - name: imap-pass
+              mountPath: /run/secrets/imap
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: imap-pass
+          secret:
+            secretName: {{ required "imap.passwordSecret.name" .Values.imap.passwordSecret.name }}
+            defaultMode: 0440
+            items:
+              - key: {{ required "imap.passwordSecret.key" .Values.imap.passwordSecret.key }}
+                path: pass
+        - name: tmp
+          emptyDir: {}

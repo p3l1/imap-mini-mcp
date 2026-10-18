@@ -79,3 +79,16 @@ jobs:
             -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"ci","version":"0"}}}' \
             | grep -q imap-mini-mcp
           docker rm -f mcp
+
+      # The chart's appVersion carries the image tag, so Argo CD only needs the
+      # chart version it resolved from its semver range.
+      - uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v4.3.1
+
+      - name: Package and push the chart
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          helm package charts/imap-mini-mcp --version "$VERSION" --app-version "$VERSION"
+          helm registry login ghcr.io -u '${{ github.actor }}' -p '${{ secrets.GITHUB_TOKEN }}'
+          helm push "imap-mini-mcp-${VERSION}.tgz" oci://ghcr.io/p3l1/charts

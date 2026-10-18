@@ -1,0 +1,6 @@
+# Values for `helm lint` and `helm template` in CI; not a deployment.
+imap:
+  host: imap.example.org
+  user: someone@example.org
+  label: Example
+  passwordSecret: {name: s, key: IMAP_PASS}

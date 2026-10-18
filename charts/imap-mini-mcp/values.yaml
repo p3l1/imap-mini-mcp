@@ -1,0 +1,36 @@
+image:
+  repository: ghcr.io/p3l1/imap-mini-mcp
+  # Empty: the tag is the chart's appVersion, which the release sets to the
+  # image version.
+  tag: ""
+  pullPolicy: IfNotPresent
+  pullSecrets: []
+
+timezone: Europe/Berlin
+
+# One release per mailbox.
+imap:
+  host: ""
+  port: 993
+  secure: true
+  user: ""
+  label: ""
+  passwordSecret:
+    name: ""
+    key: ""
+
+replicas: 1
+
+service:
+  port: 3000
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 384Mi
+
+podLabels: {}
+nodeSelector: {}
+tolerations: []
