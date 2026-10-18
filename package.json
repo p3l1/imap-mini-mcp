@@ -1,6 +1,6 @@
 {
   "name": "imap-mini-mcp",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "A lightweight MCP server for reading IMAP email and creating draft replies. Built for ProtonMail Bridge.",
   "type": "module",
   "main": "dist/index.js",
